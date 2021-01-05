@@ -47,6 +47,8 @@ module CU(
             ResStationEN = 4'b0001;
         end
     end
+    //把队列和保留站的full信号输入，根据当前指令即将用哪个部件来送回该部件的full信号，将full信号取反输出到PC的
+    //pcwrite，这样full为1的话PCwrite是0，也就是PC不能自增，实现了满了以后不能自增
     assign isFullOut = isFull[ALUSel];
     assign RegDst = op == `opRFormat ? `FromRd : `FromRt;
     assign vkSrc = op == `opRFormat ? `FromRtData : `FromImmd;

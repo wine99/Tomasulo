@@ -5,16 +5,20 @@ module Memory(
     input WEN,
     input [31:0] dataIn1,// Qj
     input [31:0] dataIn2,// A 
-    input op,// for example, 1 is load, 0 is write
-    input [31:0] writeData,
+    input op,// for example, 1 is load, 0 is write£¬¶ÁĞ´¿ØÖÆĞÅºÅ
+    input [31:0] writeData,  //ÒªÏò´æ´¢Æ÷Ğ´ÈëµÄÊı¾İ
     input [3:0] labelIn,
-    output reg [3:0] labelOut, 
-    output [31:0] loadData,
-    output reg available,
-    output reg require,
-    input requireAC,
+    output reg [3:0] labelOut, //½ÓÈëµ½CDBµÄlabelÊäÈëÉÏ£¬Ó¦¸ÃÊÇ±£ÁôÕ¾±àºÅÖĞ×îºóµÄ1100²¿·Ö
+    output [31:0] loadData,  //´Ó´æ´¢Æ÷¶ÁÈ¡µÄÊı¾İ
+    output reg available,   //¿ÉÄÜÊÇ±íÊ¾µ±Ç°memoryÊÇ·ñ¿ÉÓÃ
+    output reg require,   //CDBÇëÇóĞÅºÅ£¬µ±Êı¾İ×¼±¸Íê±ÏºóĞèÒªÊ¹ÓÃCDB·¢ËÍÊı¾İ
+    //¸ÃĞÅºÅ½«½ÓÈëÓÅÏÈ±àÂëÆ÷cdbHelper
+    input requireAC,  //ÊÇ·ñ¿ÉÒÔÊ¹ÓÃCDB·¢ËÍÊı¾İ£¬À´×ÔCDBHelperÓÅÏÈ±àÂëÆ÷£¬1±íÊ¾¿ÉÒÔ
     output isLastState
 );
+//memoryÊÇÍ¨¹ıºÍRAMÅäºÏÊµÏÖµÄ£¬×ÜÌåÉÏÊµÏÖÁËÒ»¸ö¶ÁÈ¡ºÍĞ´ÈëÑÓÊ±¶¼ÊÇ10¸öÖÜÆÚµÄ´æ´¢Æ÷
+//Ä¿Ç°µÄÒ»¸öÃÔ»óÔÚÓÚÎªÊ²Ã´Ğ´ÈëµÄµØÖ·ÊÇÊäÈëµÄdataIn1ºÍdataIn2µÄºÍ
+//ÎÒÃÇ½øĞĞÊµÏÖµÄÊ±ºòÓÉÓÚ¿ÉÒÔ²»ÓÃ¿¼ÂÇ´æ´¢Æ÷µÄ¶ÁÈ¡ºÍĞ´ÈëÑÓÊ±£¬ËùÒÔ¿ÉÒÔ²»ÓÃÊµÏÖµÄÕâÃ´¸´ÔÓ
     reg [31:0] addr;
     reg nRD;
     reg nWR;
@@ -30,10 +34,13 @@ module Memory(
     always@( posedge clk ) begin
         if (States == 0) begin
             if (WEN == 1) begin
+            //µ±´¦ÓÚ0×´Ì¬£¬²¢ÇÒÊ¹ÄÜĞÅºÅÔÊĞíµÄÊ±ºò£¬×¼±¸ºÃµØÖ·
+            //²¢»»µ½×´Ì¬1£¬²¢°Ñ´«µİ¸øRAMµÄĞ´ºÍ¶Á¿ØÖÆĞÅºÅÉèÖÃºÃ
+            //Õâ¸öÊ±ºòRAMÔÚclkµÄÏÂ½µÑØ¿ªÊ¼ºó¾Í»á¿ªÊ¼¶ÁÈ¡/Ğ´Èë£¬²¢ÇÒĞèÒª10¸öÖÜÆÚ×¼±¸Íê
                 addr <= dataIn1 + dataIn2;
                 labelOut <= labelIn;
                 States <= 1;
-            // States ä»0 å˜æˆ1ï¼Œè¿›å…¥è®¿å­˜é˜¶æ®µ
+            // States ä»?0 å˜æˆ1ï¼Œè¿›å…¥è®¿å­˜é˜¶æ®?
                 if (op == 1) begin
                     nRD <= 0;
                 end
@@ -48,31 +55,44 @@ module Memory(
             end
         end
         else if (States == 1) begin
+        //´¢ÓÚ×´Ì¬1µÄÊ±ºò£¬RAMÕıÔÚ½øĞĞ¶ÁÈ¡/Ğ´Èë²Ù×÷£¬´ËÊ±Ã¿¹ıÒ»¸öclkÅĞ¶ÏÊÇ·ñĞ´Èë/¶ÁÈ¡Íê±Ï
                 nRD <= 1;
                 nWR <= 1;
                 if (readStatus == 1) begin
+                //µ±¶ÁÈ¡Íê±ÏµÄÊ±ºò
+                //ÇĞ»»µ½×´Ì¬2£¬²¢ÇÒÏòCDBÓÅÏÈ±àÂëÆ÷Ìá³öÊ¹ÓÃCDBµÄÇëÇó
                     States <= 2;
                     require <= 1;
                 end
                 if (writeStatus == 1) begin
+                //µ±Ğ´ÈëÍê±ÏµÄÊ±ºò£¬²»ĞèÒªÏòCDBÌá³öÇëÇó
+                //×´Ì¬±ä³É0£¬µÈ´ıÏÂÒ»´ÎĞ´Èë»ò¶ÁÈ¡
                     require <= 0;
                     States <= 0;
                 end
             end
         else if (States == 2) begin
+        //ÔÚ×´Ì¬2µÄÊ±ºò£¬µÈ´ıÓÅÏÈ±àÂëÆ÷·µ»ØµÄÏìÓ¦ĞÅºÅ
+        //ÈôÏìÓ¦ĞÅºÅÊÇ1£¬±íÊ¾CDBÔÊĞíËÍÊı¾İ£¬»òÕßËµCDBÒÑ¾­ÄÃµ½ÁËÊı¾İ
+        //ĞŞ¸Ä×´Ì¬Îª0£¬µÈ´ıÏÂÒ»´Î¶ÁÈ¡/Ğ´Èë
             if (requireAC == 1) begin
                 States <= 0;
             end
             else begin
+            //·ñÔòÈç¹ûCDB»¹Ã»×¼±¸ºÃ£¬ÔòÒ»Ö±´¢ÓÚ×´Ì¬2
                 States <= 2;
             end
         end
         else 
             States <= 4;
+            //Õû¸öÎÄ¼ş¶¼Ã»ÓĞËµ´¢ÓÚ×´Ì¬4µÄÊ±ºòÓ¦¸Ã×öÊ²Ã´
+            //ËùÒÔÕâ¸ö×´Ì¬4¿ÉÄÜ²»»áµ½´ï£¬ÆäÊµÃ»É¶ÓÃ
     end
 
     always@(*) begin
         if (States == 1 || States == 2) begin
+        //ÔÚ×´Ì¬1µÄÊ±ºòÕıÔÚ¶ÁÈ¡/Ğ´ÈëÑÓÊ¹£¬ËùÒÔ´ËÊ±memory´¦ÓÚ²»¿ÉÓÃ×´Ì¬
+        //ÔÚ×´Ì¬2µÄÊ±ºò¶ÁÈ¡µÄÊı¾İ»¹Ã»ËÍµ½CDBÉÏ£¬ËùÒÔ´ËÊ±memoryÒ²ÊÇ²»¿ÉÓÃ×´Ì¬
             available = 0;
         end
         else begin

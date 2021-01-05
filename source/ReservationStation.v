@@ -5,30 +5,39 @@ module ReservationStation(
     input clk,
     input nRST,
     input EXEable, // whether the ALU is available and ins can be issued
-    input WEN, // Write ENable
+    //À´×ÔALUµÄavailable£¬±íÊ¾µ±Ç°ALUÊÇ·ñ¿ÉÓÃ£¬µ±ALUÊÇ¿ÕÏĞ×´Ì¬µÄÊ±ºòÕâ¸ö±êÖ¾ÊÇ1
+    input WEN, // Write ENable À´×ÔCUµÄResStationEN
 
-    input [1:0] ResStationDst,// TODO:
-    input [1:0] opCode,
-    input [31:0] dataIn1,
-    input [3:0] label1,
-    input [31:0] dataIn2,
-    input [3:0] label2,
+    input [1:0] ResStationDst,// TODO:  ±£ÁôÕ¾µÄ±àºÅ£¬alu±£ÁôÕ¾ÊÇ01£¬mul±£ÁôÕ¾ÊÇ10£¬Ö±½Ó½ÓµØºÍµçÔ´
+    //±£ÁôÕ¾Ã¿¸öÏîµÄ±àºÅ£¨È«¾Ö£©¸ñÊ½ÊÇ ±£ÁôÕ¾±àºÅ£º±£ÁôÕ¾ÄÚÏîºÅ
+    input [1:0] opCode,   //À´×ÔCUµÄALUOp£¬Ö±½ÓÊä³öµ½opOut
+    input [31:0] dataIn1,//À´×ÔRFµÄDataOut1
+    input [3:0] label1,//À´×ÔRFµÄLabelOut1
+    input [31:0] dataIn2,//À´×ÔRFµÄDataOut2ºÍDecoderµÄimmd16µÄÁ½ÖÖÀ©Õ¹×é³ÉµÄÈıÑ¡Ò»µçÂ·
+    input [3:0] label2,//À´×ÔRFµÄLabelOut2ºÍµØµÄ¶şÑ¡Ò»µçÂ·
 
-    input BCEN, // BroadCast ENable
-    input [3:0] BClabel, // BoradCast label
-    input [31:0] BCdata, //BroadCast value
+    input BCEN, // BroadCast ENable£¬À´×ÔCDBµÄENĞÅºÅ£¬memory£¬pmfState, mfStateÈı¸öÖĞÖ»ÒªÓĞÒ»¸öÌá³öÊ¹ÓÃCDBµÄÉêÇë
+    //BCEN¾ÍÊÇ1
+    input [3:0] BClabel, // BoradCast label  À´×ÔCDBµÄlabelOut
+    input [31:0] BCdata, //BroadCast value À´×ÔCDBµÄdataOut
 
-    output [1:0] opOut,
+    output [1:0] opOut,//½ÓÈëstateµÄop£¬»òÕßALUµÄOPÈë¿Ú£¬µ±Ç°Ö¸ÁîµÄ²Ù×÷Âë£¬¿ØÖÆALU½øĞĞÊ²Ã´ÔËËã
     output [31:0] dataOut1,
     output [31:0] dataOut2,
+    //Á½¸ödataOutÊÇÁ½¸ö²Ù×÷Êı£¬½ÓÈëµ½ALUµÄÁ½¸ö²Ù×÷ÊıÊäÈë¶Ë
     output isFull, // whether the buffer is full
-    output OutEn, // whether output is valid
-    output [3:0] ready_labelOut,
-    output [3:0] writeable_labelOut
+    //½ÓÈëµ½CUµÄisFull£¬CU¸ÃÊäÈëÖĞ»¹ÓĞÆäËü²¿¼ş£¬ÆäÖĞalu±£ÁôÕ¾ÊÇ0£¬mul±£ÁôÕ¾ÊÇ1£¬Ò»¸ö¶ÓÁĞÊÇ2
+    output OutEn, // whether output is valid£¬½ÓÈëµ½StateµÄWENÊäÈë£¬Ö¸Ê¾±£ÁôÕ¾ÄÚÊÇ·ñÓĞÖ¸Áî×¼±¸ºÃ
+    output [3:0] ready_labelOut,//½Óµ½ALUµÄlabelIn£¬´«Êäµ±Ç°ÔËĞĞÖ¸ÁîµÄ±£ÁôÕ¾±àºÅ
+    output [3:0] writeable_labelOut//½Óµ½mux4to1_4µÄÒ»¸öÊäÈë
+    //¸ÃÈıÑ¡Ò»ÊÇÑ¡ÔñÒ»¸öĞÅºÅµ½RFµÄWriteLabel£¬Ñ¡ÔñÄÄ¸öÓÉCU¾ö¶¨£¬Èı¸öĞÅºÅ·Ö±ğÀ´×ÔÒ»¸ö¶ÓÁĞºÍÁ½¸ö±£ÁôÕ¾
+    //¸ù¾İRF°ÑÊı¾İÊäÈëµ½ÕâÈı¸öµØ·½£¬¿ÉÄÜºÍ¿ØÖÆRFÊı¾İÊä³öÓĞ¹Ø
     );
-
-    // è®¾ç½®äº†ä¸‰ä¸ªä¿ç•™ç«™
+//×Ü¹²Ö»ÓĞÁ½¸ö±£ÁôÕ¾£¬mfALUµÄºÍpmfALUµÄ£¬
+//Ã¿¸ö±£ÁôÕ¾ÓĞÈı¸öÏî
+    // è®¾ç½®äº†ä¸‰ä¸?ä¿ç•™ç«?
     // è‹¥ä½¿b2'11æ¥ç´¢å¼•ï¼Œæ— æ•ˆ
+    //busyÔÚÖ¸Áî¸ÕĞ´Èë¸ÃÏîµÄÊ±ºòÉèÖÃÎª1£¬ÔÚÖ¸Áî¼ÆËãÍê³Éºó»Ö¸´Îª0
     reg Busy[2:0];
     reg [1:0]Op[2:0];
     reg [3:0]Qj[2:0];
@@ -36,9 +45,11 @@ module ReservationStation(
     reg [3:0]Qk[2:0];
     reg [31:0]Vk[2:0];
 
-    // å½“å‰å¯å†™åœ°å€ ,2'b11åˆ™ä¸ºä¸å¯ï¿½??
+    // å½“å‰å?å†™åœ°å€ ,2'b11åˆ™ä¸ºä¸å¯ï¿???
+    //±íÊ¾µ±Ç°¿Õ×ÅµÄÏî
     reg [1:0] cur_addr ;
-    // å½“å‰å°±ç»ªåœ°å€,2'b11åˆ™ä¸ºä¸å¯ï¿½??
+    // å½“å‰å°±ç»ªåœ°å€,2'b11åˆ™ä¸ºä¸å¯ï¿???
+    //±íÊ¾Á½¸ö²Ù×÷Êı¶¼ÒÑ¾­×¼±¸ºÃ£¬ËæÊ±¿ÉÒÔËÍ¸øALU½øĞĞ¼ÆËãµÄÏî
     reg [1:0] ready_addr ;
     initial begin
         Busy[0] = 0;
@@ -58,13 +69,21 @@ module ReservationStation(
                     Busy[cur_addr] <= 1;
                     Op[cur_addr] <= opCode;
                     if (BCEN == 1 & label1 == BClabel) begin
+                        //tomauslo£º¼Ä´æÆ÷»»Ãû£¬ÔÚĞÂµÄÖ¸ÁîĞ´ÈëµÄÊ±ºò£¬ÏÈ´ÓCDB¿´µÚÒ»¸öÔ´²Ù×÷Êı¼Ä´æÆ÷µÈ´ıµÄÊı¾İÊÇ·ñÔÚ
+                        //CDBÉÏ£¬ÔÚµÄ»°¿ÉÒÔÖ±½ÓÄÃ¹ıÀ´
                         Qj[cur_addr] <= 0;
                         Vj[cur_addr] <= BCdata;
                     end
                     else begin
+                    //tomasulo£º¼Ä´æÆ÷»»Ãû£¬CDBÃ»ÓĞµÄ»°£¬Ö±½Ó°ÑRFËÍÀ´µÄÔ´²Ù×÷ÊıÖµºÍlabelĞ´Èë
+                    //´ËÊ±Ğ´ÈëµÄÔ´²Ù×÷ÊıÖµ¿ÉÄÜÊÇÕıÈ·µÄ£¬´ËÊ±labelÓ¦¸ÃÊÇ0£¬»òÕß»¹ÔÚ¼ÆËã£¬´ËÊ±label²»ÊÇ0£¬
+                    //¼Ä´æÆ÷»»ÃûÖ®ºó£¬±£ÁôÕ¾ÖĞµÄÏî¾ÍºÍRF·Ö¿ªÁË£¬Èç¹ûVj»¹Ã»×¼±¸ºÃ£¬ÄÇQjÀï»á±ê×¢ÆäµÈ´ıµÄlabel£¬
+                    //ÔÚÖ®ºóµÄclkµ½À´µÄÊ±ºò£¬»áÔÚÏÂÃæµÄwatch CDBµÄµØ·½°Ñ¼ÆËãÍêµÄÖµĞ´Èë£¬²»ĞèÒªÔÙ´ÓRFÀï¶ÁÈ¡
+                    //½â¾öÁËWAR³åÍ»
                         Qj[cur_addr] <= label1;
                         Vj[cur_addr] <= dataIn1;
                     end
+                    //Ô´²Ù×÷Êı2µÄ²½ÖèÊÇÒ»ÑùµÄ£¬µ«ÊÇ¸ù¾İÖ¸Áî¸ñÊ½²»Í¬Ô´²Ù×÷Êı2Ò²²»Í¬£¬ËùÒÔlabel2ÊÇÊÜµ½Ñ¡ÔñµçÂ·¿ØÖÆµÄ
                     if (BCEN == 1 && label2 == BClabel) begin
                         Qk[cur_addr] <= 0;
                         Vk[cur_addr] <= BCdata;
@@ -77,10 +96,14 @@ module ReservationStation(
                 //  maybe generate latch
             end
             // watch CDB
+            //½â¾öÁËRAW³åÍ»
             if (BCEN == 1 ) begin 
                 if (BClabel[3:2] == ResStationDst) begin
-                    Busy[BClabel[1:0]] <= 0;
+                //×¢ÒâBClabelµÄÀ´Ô´£¬BClabelÊÇÍê³ÉÁË¼ÆËãµÄÖ¸ÁîËùÔÚµÄ±£ÁôÕ¾µÄÏîµÄ±àºÅ£¬
+                //ËùÒÔµÚÒ»¸öifÊÇ°Ñ¸ÃÏîµÄbusyÉèÖÃÎª0
+                    Busy[BClabel[1:0]] <= 0; 
                 end
+                //°¤¸ö¿´busyÊÇ1µÄÏî£¬°ÑµÈ´ıCDBÉÏÊı¾İµÄÏî½øĞĞ¸üĞÂ
                 if (Busy[0] == 1 && Qj[0] == BClabel) begin
                     Vj[0] = BCdata;
                     Qj[0] = 0;
@@ -114,8 +137,9 @@ module ReservationStation(
     assign dataOut1 = Vj[ready_addr];
     assign dataOut2 = Vk[ready_addr];
     
-    // ä¼˜å…ˆè¯‘ç ï¼Œä½¿ç”¨ç»„åˆï¿½?ï¿½è¾‘ç”Ÿæˆå½“å‰å¯å†™åœ°å€
-    // è‹¥ä¸º2'b11åˆ™ä¸å¯å†™
+    // ä¼˜å…ˆè¯‘ç ï¼Œä½¿ç”¨ç»„åˆï¿½?ï¿½è¾‘ç”Ÿæˆå½“å‰å?å†™åœ°å€
+    // è‹¥ä¸º2'b11åˆ™ä¸å?å†?
+    //00ºÅ±£ÁôÕ¾ÏîµÄÓÅÏÈ¼¶×î¸ß
     always@(*) begin
         if (Busy[0] == 0) begin
             cur_addr = 2'b00;
@@ -131,10 +155,13 @@ module ReservationStation(
     end
 
     // ä¿ç•™ç«™æ˜¯å¦æ»¡
+    //Ö»ÓĞµ±cur_addrÊÇ11bµÄÊ±ºò&cur_addr²ÅÊÇ1
     assign isFull = & cur_addr;
 
-    // æ˜¯å¦å°±ç»ª
-    // è®¡ç®—å½“å‰å°±ç»ªåœ°å€ï¼Œä»¥åŠå°±ç»ªçŠ¶ï¿½??
+    // æ˜?å¦å°±ç»?
+    // è®¡ç®—å½“å‰å°±ç»ªåœ°å€ï¼Œä»¥åŠå°±ç»?çŠ¶ï????
+    //¼ÆËãÁ½¸ö²Ù×÷Êı¶¼×¼±¸ºÃµÄÏî
+    //00ÏîµÄÓÅÏÈ¼¶ÊÇ×î¸ßµÄ
     always@(*)begin
         if (Busy[0] == 1 && Qj[0] == 0 && Qk[0] == 0) begin
             ready_addr = 2'b00;
@@ -153,9 +180,13 @@ module ReservationStation(
         end
     end
 
+    //Ö»ÓĞµ±ready_addrÊÇ11bµÄÊ±ºòoutEn²ÅÊÇ0
+    //Ò²¾ÍÊÇÖ»Òª±£ÁôÕ¾ÄÚÓĞÏî×¼±¸ºÃÁË£¬ÄÇOutEn¾ÍÊÇ1
     assign OutEn = ~ (&ready_addr);
 
+    //Ö¸¶¨µÄ±£ÁôÕ¾Àï×¼±¸ºÃµÄ±£ÁôÕ¾ÏîºÅ
     assign ready_labelOut = {ResStationDst,ready_addr};// TODO:
+    //½«µ±Ç°¿ÕÏĞµÄ±£ÁôÕ¾Ïî±àºÅÊä³ö£¬ÔÚALUµÄ¿ØÖÆÏÂÊä³öµ½RFµÄWriteLabel£¬×÷ÎªÏÂÒ»¸öÖ¸ÁîÒª±£´æµÄ±£ÁôÕ¾ºÅ
     assign writeable_labelOut = {ResStationDst, cur_addr};
 
 endmodule

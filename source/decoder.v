@@ -11,6 +11,7 @@ module Decoder(
     output [15:0] immd16,
     output [25:0] immd26
     );
+    //把输入的指令分成好几部分，因为实现的是RISC架构，指令里位置都是固定的
     assign op = ins[31:26];
     assign func = ins[5:0];
     assign sftamt = ins[10:6];

@@ -1,4 +1,5 @@
 {
+    "files.encoding": "gb2312",
     "latex-workshop.chktex.enabled": true,
     "todohighlight.isEnable": true,
     "latex-workshop.latex.toolchain": [

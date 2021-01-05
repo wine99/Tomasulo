@@ -55,7 +55,7 @@ module top(
         .immd26(immd26),
         .sel(sel),
         .rs(0), // rs here is data
-        .newpc
+        .newpc(newpc)
     );
     ROM rom(
         .nrd(1'b0),
@@ -221,9 +221,9 @@ module top(
         .label1(Qj),
         .dataIn2(Vk),
         .label2(Qk),
-        .BCEN,
-        .BClabel,
-        .BCdata,
+        .BCEN(BCEN),
+        .BClabel(BClabel),
+        .BCdata(BCdata),
         .opOut(mul_op),
         .dataOut1(mul_A),
         .dataOut2(mul_B),
@@ -238,20 +238,20 @@ module top(
     wire mfALUEN;
     wire mfRequire;
     mfState mf_state(
-        .clk,
-        .nRST,
+        .clk(clk),
+        .nRST(nRST),
         .stateOut(mfStateOut),
         .WEN(mul_isReady),
         .requireAC(requireAC_s[1]),
         .available(mul_EXEable),
-        .mfALUEN,
+        .mfALUEN(mfALU),
         .op(mul_op),
         .require(require_s[1])
     );
 
     mfALU mf_alu(
-        .clk,
-        .nRST,
+        .clk(clk),
+        .nRST(nRST),
         .EN(mfALUEN),
         .dataIn1(mul_A),
         .dataIn2(mul_B),
@@ -446,15 +446,15 @@ module top(
     );
 
     CU contril_unit(
-        .op,
-        .func,
+        .op(op),
+        .func(func),
         .ALUop(opcode),
         .ALUSel(ResStationDst),
-        .ResStationEN,
+        .ResStationEN(ResStationEN),
         .isFull({queue_isfull, mul_isfull, alu_isfull}),
         .isFullOut(isFullOut),
-        .vkSrc,
-        .RegDst,
+        .vkSrc(vkSrc),
+        .RegDst(RegDst),
         .QueueOp(QueueOp)
     );
 
