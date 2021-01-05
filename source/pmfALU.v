@@ -8,7 +8,7 @@ module pmfState(
     input requireAC, //CDB响应信号，由cdbHelper发回，为1的时候表示CDB已经拿走了数据
     output available,//当前ALU是否可用，接入到alu保留站的EXEable
     output pmfALUEN, // send to pmfALU as EN
-    input [1:0]op,//来自保留站的opOut，准备完毕的指令的操作码
+    input [2:0]op,//来自保留站的opOut，准备完毕的指令的操作码
     output require //CDB请求信号，当ALU计算完毕后向优先编码器cdbHelper发出申请
 );
     //和mfALU一样
@@ -16,6 +16,9 @@ module pmfState(
     assign pmfALUEN = available && WEN;
     //当处于这两个状态的时候表示计算完毕，向CDBHelper发出需要CDB的申请
     assign require = stateOut == `sPremitiveIns || stateOut == `sMAdd;
+    initial begin
+        stateOut = `sIdle;
+    end
     //sPremitiveIns表示加法运算完毕，在pmfALU中，如果算的是加法，在状态还是idle的时候的一个周期
     //就已经把结果计算完毕了，这个周期的时候pmfstate才把状态切换成sPremitiveIns，所以在这个状态的时候可以直接发起CDB申请。
     //当进行减法运算的时候，第一个clk ALU读入的还是idle状态，把操作数读入，这个时候操作数还没取反
@@ -57,7 +60,7 @@ module pmfALU(
     input [31:0] dataIn1,//来自保留站，第一个操作数
     input [31:0] dataIn2,//来自保留站，第二个操作数
     input [1:0] state,//来自pmfState，控制ALU的状态
-    input [1:0]op,//来自保留站的opOut，当前执行指令的操作码
+    input [2:0]op,//来自保留站的opOut，当前执行指令的操作码
     output reg [31:0] result,//送到CDB的data0
     input [3:0] labelIn,//来自保留站的ready_labelOut，当前指令在保留站中的标号
     output reg [3:0] labelOut//送到CDB的label0
@@ -65,7 +68,11 @@ module pmfALU(
     reg [31:0] data1_latch;
     reg [31:0] data2_latch;
     reg [31:0] inverseData2_latch;
-    reg [1:0] op_latch;
+    reg [2:0] op_latch;
+    initial begin
+        result = 0;
+        labelOut = 0;
+    end
     always@(posedge clk or negedge nRST) begin
         if (!nRST) begin
             data1_latch <= 32'b0;
@@ -96,7 +103,13 @@ module pmfALU(
             `ALUAnd :
                 result = data1_latch & data2_latch;
             `ALUOr:
-                result = data1_latch & data2_latch;   //这里明明是或，可能是写错了吧
+                result = data1_latch | data2_latch;   
+            `ALUXor:
+                result = data1_latch ^ data2_latch;
+            `ALUNor:
+                result = ~ (data1_latch | data2_latch);
+            `ALUSlt:
+                result = data1_latch < data2_latch ? 1 : 0;
             default:
                 result = 32'b0;
         endcase

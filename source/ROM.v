@@ -7,11 +7,26 @@ module ROM (
 
     reg [7:0] rom [0:99]; 
     initial begin 
-        //$readmemb ("C:/Users/Administrator/Desktop/workplace/Tomasulo/rom/rom.mem", rom); 
-         $readmemb ("F:/code/git/Tomasulo/rom/rom.mem", rom);   //ROM的初始化
-       // $readmemb ("E:/code/Tomasulo/rom/testcase6.mem", rom); 
-//         $readmemb ("C:/Users/Administrator/Desktop/workplace/Tomasulo/rom/testcase5.mem", rom);
-        // $readmemb ("C:/Users/Administrator/Desktop/workplace/Tomasulo/rom/rom.mem", rom); 
+         //$readmemb ("E:/myfile/计算机体系结构/课设/Tomasulo-master/rom/mytest.mem", rom);
+         rom[0] = 8'b00100000;
+         rom[1] = 8'b00000001;
+         rom[2] = 8'b00000000;
+         rom[3] = 8'b00000001;
+         
+         rom[4] = 8'b00100000;
+         rom[5] = 8'b00000001;
+         rom[6] = 8'b00000000;
+         rom[7] = 8'b00000001;
+         
+         rom[8] = 8'b00100000;
+         rom[9] = 8'b00000001;
+         rom[10] = 8'b00000000;
+         rom[11] = 8'b00000001;
+         
+         rom[12] = 8'b11111100;
+         rom[13] = 8'b00000000;
+         rom[14] = 8'b00000000;
+         rom[15] = 8'b00000000;
     end
     always @(*) begin
         if (nrd == 0) begin

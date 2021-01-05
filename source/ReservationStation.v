@@ -10,7 +10,7 @@ module ReservationStation(
 
     input [1:0] ResStationDst,// TODO:  保留站的编号，alu保留站是01，mul保留站是10，直接接地和电源
     //保留站每个项的编号（全局）格式是 保留站编号：保留站内项号
-    input [1:0] opCode,   //来自CU的ALUOp，直接输出到opOut
+    input [2:0] opCode,   //来自CU的ALUOp，直接输出到opOut
     input [31:0] dataIn1,//来自RF的DataOut1
     input [3:0] label1,//来自RF的LabelOut1
     input [31:0] dataIn2,//来自RF的DataOut2和Decoder的immd16的两种扩展组成的三选一电路
@@ -21,7 +21,7 @@ module ReservationStation(
     input [3:0] BClabel, // BoradCast label  来自CDB的labelOut
     input [31:0] BCdata, //BroadCast value 来自CDB的dataOut
 
-    output [1:0] opOut,//接入state的op，或者ALU的OP入口，当前指令的操作码，控制ALU进行什么运算
+    output [2:0] opOut,//接入state的op，或者ALU的OP入口，当前指令的操作码，控制ALU进行什么运算
     output [31:0] dataOut1,
     output [31:0] dataOut2,
     //两个dataOut是两个操作数，接入到ALU的两个操作数输入端

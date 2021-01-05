@@ -1,9 +1,15 @@
 `include "head.v"
 `timescale 1ns/1ps
 module top(
-    input clk,
-    input nRST
+    input clk_in,
+    input nRST,
+    output wire [15:0] pc_right16
 );
+    wire clk;
+    frequencyChanger clkGenerator(
+        .clk_in(clk_in),
+        .clk_out(clk)
+    );
     wire [5:0] op;
     //TODO:: not finished 
     wire pcWrite = op == `opHALT ? 0 : 1;
@@ -11,6 +17,12 @@ module top(
     //TODO END
     wire labelEN;
     wire [31:0] pc;
+    assign pc_right16 = pc[15:0];
+    
+    wire [3:0] alu_labelOut;
+    
+    wire [3:0]memory_labelOut;
+    
     wire [31:0] newpc;
     wire [31:0] ins;
     wire isFullOut;
@@ -30,7 +42,7 @@ module top(
     wire [3:0] BClabel;
     wire [3:0] alu_label;
     wire mul_EXEable;
-    wire [1:0]mul_op;
+    wire [2:0]mul_op;
     wire [31:0] mul_A;
     wire [31:0] mul_B;
     wire mul_isReady;
@@ -85,6 +97,7 @@ module top(
         .RegWr(labelEN),
         .WriteAddr(writeDst),
         .WriteLabel(cur_label), //TODO
+        .op(op),
         .DataOut1(rsData),
         .DataOut2(rtData),
         .LabelOut1(rsLabel),
@@ -95,7 +108,7 @@ module top(
     );
 
 
-    // 假设已经搞定，译码完成，以下就是我想要的
+    // 假�?�已经搞定，译码完成，以下就�?我想要的
     wire [3:0] ResStationEN;// 3,2,1,0 : lw,div,mul,alu
     wire [1:0] opcode;// updated by control_unit
     // wire [1:0] ResStationDst; // updated by control_unit
@@ -117,7 +130,7 @@ module top(
             writeDst = rd;
         end
         else begin
-            if (op == `opORI) begin
+            if (op == `opORI || op == `opANDI || op == `opXORI) begin
                 Vk = {16'b0, immd16};
                 Qk = 4'b0000;
                 writeDst = rt; 
@@ -151,7 +164,7 @@ module top(
     wire alu_isReady;
     wire alu_isfull;
     wire [31:0] alu_result;
-    wire [3:0] alu_labelOut;
+    
 
     ReservationStation alu_reservationstation(
         .clk(clk),
@@ -167,7 +180,7 @@ module top(
         .BCEN(BCEN),
         .BClabel(BClabel),
         .BCdata(BCdata),
-        .opOut(alu_op),
+        .opOut(lu_op),
         .dataOut1(alu_A),
         .dataOut2(alu_B),
         .isFull(alu_isfull),
@@ -244,7 +257,7 @@ module top(
         .WEN(mul_isReady),
         .requireAC(requireAC_s[1]),
         .available(mul_EXEable),
-        .mfALUEN(mfALU),
+        .mfALUEN(mfALUEN),
         .op(mul_op),
         .require(require_s[1])
     );
@@ -360,12 +373,15 @@ module top(
     wire ImmdOpOut;
     wire [31:0]ImmdDataOut;
     wire [3:0]ImmdLabelOut;
+    
+    wire immdQueueIsFull;
+    wire immdQueueWriteableLabel;
     Queue opprendImmd_queue(
         .clk(clk),
         .nRST(nRST),
         .requireAC(memory_available),
         .WEN(ResStationEN[3]),
-        .isFull(),
+        .isFull(immdQueueIsFull),
         .require(queue_require[1]),
         .dataIn({{16{immd16[15]}},immd16}), // TODO: not generated
         .labelIn(4'b0),
@@ -377,17 +393,19 @@ module top(
         .dataOut(ImmdDataOut),
         .labelOut(ImmdLabelOut),
         .isLastState(isLastState),
-        .queue_writeable_label()
+        .queue_writeable_label(immdQueueWriteableLabel)
     );
     wire RSOpOut;
     wire [31:0]RSDataOut;
     wire [3:0]RSLabelOut;
+    wire rsQueueIsFull;
+    wire rsQueueWriteableLabel;
     Queue opprendRS_queue(
         .clk(clk),
         .nRST(nRST),
         .requireAC(memory_available),
         .WEN(ResStationEN[3]),
-        .isFull(),
+        .isFull(rsQueueIsFull),
         .require(queue_require[2]),
         .dataIn(rsData),
         .labelIn(rsLabel),
@@ -399,11 +417,11 @@ module top(
         .dataOut(RSDataOut),
         .labelOut(RSLabelOut),
         .isLastState(isLastState),
-        .queue_writeable_label()
+        .queue_writeable_label(rsQueueWriteableLabel)
     );
     wire [31:0]memory_loadData;
     wire memory_require_CDB;
-    wire [3:0]memory_labelOut;
+    
     Memory yf_memory(
         .clk(clk),
         .WEN(&queue_require),

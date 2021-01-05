@@ -4,11 +4,12 @@ module RegFile(
     input clk,
     input nRST,
     input [4:0] ReadAddr1,//来自指令的rs
-    input [4:0] ReadAddr2,
+    input [4:0] ReadAddr2,//来自rt
     input RegWr, //labelEN，高电平有效，来自CU的isFullOut
     input [4:0] WriteAddr, //来自指令的rt或者rd
     input [3:0] WriteLabel,//来自四选一，两个保留站的writeable_labelOut和Queue的一个输出中选一个
     //在保留站中该信号表示了当前保留站中空着的项的label
+    input [5:0] op,
     output [31:0] DataOut1,
     output [31:0] DataOut2,
     output [3:0] LabelOut1,
@@ -32,8 +33,11 @@ module RegFile(
                     regLabel[i] <= 32'b0;
                 end else begin
                     if (RegWr && WriteAddr == i) begin
-                        regLabel[i] <= WriteLabel; // don't care whether WriteLabel is the same as BClabel. 
+                        if (op != `opSW)begin
+                        //sw指令不需要写入寄存器值
+                            regLabel[i] <= WriteLabel; // don't care whether WriteLabel is the same as BClabel. 
                             // Anyway, it is overriden by WriteLabel at last.
+                        end
                             //tomasulo的一个步骤，指令流出以后给要写的目标寄存器标上该指令在保留站中的编号
                             //解决了WAW冲突
                             //遍历所有的寄存器，使能信号为1并且要写入的是当前的寄存器的时候

@@ -15,6 +15,9 @@ module CDBHelper(
 //所谓的CDBHelper其实就是个优先编码器，多个输入的请求中requires[3]，
 //也就是memory是优先级最高的，一旦该部件提出要使用CDB发送数据的请求，
 //就响应该部件，把使用权交给他
+    initial begin
+        accepts = 4'b0000;
+    end
     always@(*) begin
         if (requires[3])
             accepts = 4'b1000;
@@ -55,19 +58,23 @@ module CDB(
 //但是在这里却先判断sel[0]，也就是pmfState的，并且把pmfState的数据放到CDB上，
 //这样出现了明明给memory返回了确认，却把pmfState的数据放上去了
 //可能是作者写反了吧。
+    initial begin
+        dataOut = 0;
+        labelOut = 0;
+    end
     always@(*) begin
-        if (sel[0]) begin
-            dataOut = data0;
-            labelOut = label0;
-        end else if (sel[1]) begin
-            dataOut = data1;
-            labelOut = label1;
+        if (sel[3]) begin
+            dataOut = data3;
+            labelOut = label3;
         end else if (sel[2]) begin
             dataOut = data2;
             labelOut = label2;
+        end else if (sel[1]) begin
+            dataOut = data1;
+            labelOut = label1;
         end else begin
-            dataOut = data3;
-            labelOut = label3;
+            dataOut = data0;
+            labelOut = label0;
         end
     end
     //三个部件都没请求信号，即三个require都是0的时候，EN才是0

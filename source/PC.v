@@ -8,6 +8,9 @@ module PC(
     //另一个条件是当前执行的指令需要的部件（保留站，队列）是否满了，如果满了，pcWrite也是0
     output reg [31:0]pc
     );
+    initial begin
+        pc = 0;
+    end
     always@(posedge clk or negedge nRST) begin
         if (pcWrite || !nRST) begin
             pc <= nRST == 0 ? 0 : newpc;             //pc的值或者写入或者重置

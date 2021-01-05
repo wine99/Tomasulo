@@ -13,7 +13,7 @@ module mfState(
     output available,//接入到保留站的EXEable信号上，表示当前ALU是否可以执行/可用
     output mfALUEN, // determine whether mdfALU should work
     //接入到mf_alu的EN信号上
-    input [1:0] op, // do nothing，来自mul保留站的opOut，是保留站中保存的输出到ALU指令的操作码
+    input [2:0] op, // do nothing，来自mul保留站的opOut，是保留站中保存的输出到ALU指令的操作码
     output require  //CDB请求信号，当ALU计算完毕之后，利用该信号向优先编码器申请CDB使用权
     //1表示申请
 );
@@ -32,6 +32,9 @@ module mfState(
     //sMulAnswer可能表示的是ALU计算完毕的状态，当处于该状态的时候
     //require是1，也就是需要向CDB发送数据，提出了申请
     assign require = stateOut == `sMulAnswer;
+    initial begin
+        stateOut = `sIdle;
+    end
     always@(posedge clk or negedge nRST) begin
         if (!nRST) begin
         //重置信号，将ALU的状态重置成空闲
@@ -79,6 +82,11 @@ module mfALU(
     reg [31:0]temp8[0:7];
     reg [31:0]temp4[0:3];
     reg [31:0]temp2[0:1];
+    
+    initial begin
+        result = 0;
+        labelOut = 0;
+    end
 
     always@(posedge clk or negedge nRST) begin
         if (!nRST) begin

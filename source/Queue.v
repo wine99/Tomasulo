@@ -6,7 +6,7 @@ module Queue(
     input nRST,
     input requireAC, // whether the ALU is available and ins can be issued，来自memory的avaible信号
     //表示当前memory能不能使用，由于memory读写需要延时，所以要等延时结束了才能用
-    input WEN, // Write ENable，来自CU的ResStationEN，三个Queue都接入到该信号的第3个
+    input WEN, // Write ENable，来自CU的ResStationEN，三个Queue都接入到该信号的第3个，为1的时候表示需要读入新的指令
     output isFull, // whether the buffer is full，只有RT队列该信号接入到CU的isFull的2号下标，其它俩队列都没接
     output require, // whether output is valid，三个队列组成的2:0信号经过一个与门输入到memory的WEN里
     //表示是否存在数据需要issue，也就是只有当三个队列都有数据需要issue的时候memory才可以开始工作
@@ -29,16 +29,23 @@ module Queue(
     output [3:0] queue_writeable_label//只有RT队列的该信号接入到了四选一的一个输出上，
     //该信号和保留站的writeable_labelOut是同义的应该，内容是1100部分的保留站编号
     );
+    //store指令的执行必须是顺序的，原因是如果有多个store指令，需要保证同一个地址的结果是最后一条store指令存的数据
+    //所以存储保留站使用了队列来实现，先进入的指令先执行
+    //由于从PC到RF读出操作数都是组合逻辑操作，所以在保留站之前全都是顺序流出的
+    //顺序流出的指令在队列中保持了流出的顺序
+    //所以dataout即输出的data只能是队头指令的数据
+    
     //三个项中可用的那一个
     reg [3:0]availableIdLabel;
+    //可用的Queue项号，此Queue实现中队列的项号和实际的下标不是统一的，项号只是一个逻辑上的，专门有IdLabel存Queue项号
     assign queue_writeable_label = availableIdLabel;
     //各个项是否可用
     reg [3:0]Busy;
-    //label是产生指令中RS操作数的label
+    //label是产生指令中RS操作数的label，来自RF
     reg [3:0]Label[3:0];
     //data是RS操作数
     reg [31:0]Data[3:0];
-    //idlabel是当前数据存在存储保留站的哪个label上
+    //idlabel是当前数据存在Queue的哪个label上，该label是逻辑上的label，和物理下标不一一对应
     reg [3:0]IdLabel[3:0];
     reg [3:0]op;
     initial begin
@@ -57,11 +64,13 @@ module Queue(
     //表示是否三个项全满了
     wire wbusy = Busy[0] && Busy[1] && Busy[2]; //三位二进制相与
     //当三个项全满了并且不能流出的时候是full状态
-    assign isFull = !issuable && wbusy;
+    //!issuable改为!popable
+    assign isFull = !poppable && wbusy;
     //require表示是否存在数据需要issue，0号项busy且数据已经准备好的话就可以输出了
     assign require = Busy[0] && Label[0] == 0;
     wire poppable;
     //当memory的延时进入只剩下一个clk就可以完成的时候，队列可以pop
+    //此时队头的指令已经快执行完了，所以在Queue内的这条指令可以移走了
     assign poppable = isLastState;
     
     reg [1:0] first_empty;
@@ -82,7 +91,7 @@ module Queue(
         else lastBusyIndex = -1;
     end
 
-    //寻找可用的那一项
+    //寻找可用的队列项号
     always@(*) begin
         if (wbusy) 
         //三个都忙的时候没有项可以使用
@@ -107,12 +116,15 @@ module Queue(
                     IdLabel[i] <= 0;
                     op[i] <= 0;
                 end else if (WEN) begin
-                //目前只有一条指令WEN等于1，所以先不管这里了
-                //没看懂
+                //WEN为1和保留站里的WEN是1意思是一样的，都是在下一个clk上升沿把下一条输入的指令保存
                     if (!poppable) begin
-                        //对于RS队列：把源操作数读入到空闲的项，并对busy的项更新
+                    //popable说明队头指令是否已经存取结束，可以弹出
+                    //当需要读入新指令（WEN=1），且队头指令还没执行完不能弹出（!popable)
+                    //如果没有全满，则在队尾（first_empty)读入一条新指令
+                    //如果全满了，由于不能弹出，所以卡住了，发生了结构冲突，只能更新各个项
                         if (!wbusy && i == first_empty) begin //Wen && !issuable && !busy
                             // input data to the first empty position
+                            
                             Busy[i] <= 1;
                             //对于RS队列，如果CDB的数据是指令里的源操作数，那空项的数据为该源操作数，
                             //否则为寄存器里读到的源操作数
@@ -127,6 +139,9 @@ module Queue(
                             end
                         end 
                     end else begin
+                    //当队头指令已经执行完可以弹出（popable=1），
+                    //必定可以读入新指令
+                    //所有指令前移一位，最后一个busy的位置读入新指令
                         if (i == lastBusyIndex) begin // WEN && issuable : queue must be available
                             // Busy is also 1, so do not change
                             Data[i] <= BCEN && BClabel == labelIn ? BCdata : dataIn;
@@ -141,8 +156,10 @@ module Queue(
                         end
                     end
                 end else begin
-                //对于WEN为0的指令，如果可以pop的话，除了最后一项以外其它项前移一位，最后一项清零
+                //WEN为0，也就是不需要读入新的指令的时候
                     if (poppable) begin
+                    //当不需要读入新指令（WEN=0），并且可以弹出队头指令时
+                    //所有指令前移一位，最后一条busy的指令清空（因为不需要读入新指令）
                         if (i == lastBusyIndex) begin //!Wen && issuable
                             Busy[i] <= 0;
                             Data[i] <= 0;
@@ -157,7 +174,9 @@ module Queue(
                             IdLabel[i] <= IdLabel[i+1];
                         end
                     end else begin //!WEN && !issuable
-                    //不能pop的时候更新所有项
+                    //当队头指令还在执行中时（!popable)
+                    //既不需要读新指令，也不需要弹出队头指令的时候
+                    //只需要把所有数据更新一下
                         if (BCEN && BClabel == Label[i]) begin
                             Data[i] <= BCdata;
                             Label[i] <= 0;

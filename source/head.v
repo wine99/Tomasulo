@@ -1,8 +1,11 @@
 // ALUopcode
-`define ALUAdd 2'b00
-`define ALUSub 2'b01
-`define ALUAnd 2'b10
-`define ALUOr 2'b11
+`define ALUAdd 3'b000
+`define ALUSub 3'b001
+`define ALUAnd 3'b010
+`define ALUOr 3'b011
+`define ALUXor 3'b100
+`define ALUNor 3'b101
+`define ALUSlt 3'b110
 
 `define ALUMultiple 1'b0
 `define ALUDivide 1'b1
@@ -27,11 +30,17 @@
 `define opSLL 6'b000000
 `define opSLT 6'b000000
 `define opJR 6'b000000
-`define opSLTI 6'b010001
+`define opXOR 6'b000000
+`define opNOR 6'b000000
+
+`define opSLTI 6'b001010
 `define opADDI 6'b001000
 `define opORI 6'b001101
 `define opSW 6'b101011
 `define opLW 6'b100011
+`define opANDI 6'b001100
+`define opXORI 6'b001110
+
 `define opBEQ 6'b000100
 `define opBNE 6'b000101
 `define opBGTZ 6'b000111
@@ -40,6 +49,7 @@
 `define opMULIU 6'b000000
 `define opDIVU 6'b000000
 `define opHALT 6'b111111
+
 // func code
 `define funcADD 6'b100000
 `define funcSUB 6'b100011
@@ -47,6 +57,8 @@
 `define funcOR 6'b100101
 `define funcSLL 6'b000000
 `define funcSLT 6'b101010
+`define funcXOR 6'b100110
+`define funcNOR 6'b100111
 `define funcJR 6'b000001
 `define funcMULU 6'b001011
 `define funcDIVU 6'b011011
